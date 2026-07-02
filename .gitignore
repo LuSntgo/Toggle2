@@ -1,0 +1,21 @@
+# Segredos / configuração local
+.env
+*.env
+!.env.example
+
+# Go
+**/*.exe
+**/auth-service/auth-service
+**/evaluation-service/evaluation-service
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+
+# Docker / volumes locais
+**/data/
+
+# IDE
+.vscode/
+.idea/
