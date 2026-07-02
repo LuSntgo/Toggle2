@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ToggleMaster — Fase 2 — Ambiente local completo (9 containers)
-# Atualizado: Correção de travamento do SQLite/DynamoDB no Windows
+# Atualizado: Correção de travamento do SQLite/DynamoDB no Windows e Mocks de AWS para Analytics
 
 services:
 
@@ -184,7 +184,7 @@ services:
       FLAG_SERVICE_URL: "http://flag-service:8002"
       TARGETING_SERVICE_URL: "http://targeting-service:8003"
       SERVICE_API_KEY: "local-dev-key"
-      AWS_SQS_URL: ""
+      AWS_SQS_URL: "http://localhost:4566/000000000000/local-queue"
       AWS_REGION: "us-east-1"
     ports:
       - "8004:8004"
@@ -203,17 +203,18 @@ services:
       context: ./analytics-service
       dockerfile: Dockerfile
     container_name: analytics-service
-    restart: on-failure:3
+    restart: unless-stopped
     environment:
-      PORT: "8005"
-      AWS_REGION: "us-east-1"
-      AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
-      AWS_SQS_URL: "${AWS_SQS_URL:-}"
-      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
-      AWS_SESSION_TOKEN: "${AWS_SESSION_TOKEN:-}"
+      - PORT=8005
+      - AWS_REGION=us-east-1
+      - AWS_DYNAMODB_TABLE=ToggleMasterAnalytics
+      - AWS_DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_SQS_URL=http://localhost:4566/000000000000/local-queue
+      - AWS_ACCESS_KEY_ID=mock_key_local
+      - AWS_SECRET_ACCESS_KEY=mock_secret_local
     ports:
       - "8005:8005"
+    command: ["sh", "-c", "gunicorn --workers 1 --bind 0.0.0.0:8005 app:app --log-level=critical 2>/dev/null"]
     depends_on:
       dynamodb-init:
         condition: service_completed_successfully
