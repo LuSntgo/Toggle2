@@ -27,7 +27,7 @@ WORKDIR /app
 # mesmo em runtime, mas não do libpq-dev nem do compilador).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
-    && apt-get purge -y --auto-remove perl-base \
+    && apt-get purge -y --allow-remove-essential --auto-remove perl-base \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system app && adduser --system --ingroup app app
 # Copia os pacotes Python já instalados do estágio de build.
