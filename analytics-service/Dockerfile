@@ -15,6 +15,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
+    && apt-get purge -y --auto-remove perl-base \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system app && adduser --system --ingroup app app
 

@@ -26,11 +26,10 @@ WORKDIR /app
 # libpq5 é a lib de runtime do client PostgreSQL (psycopg2 precisa dela
 # mesmo em runtime, mas não do libpq-dev nem do compilador).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq5 \
         curl \
+    && apt-get purge -y --auto-remove perl-base \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system app && adduser --system --ingroup app app
-
 # Copia os pacotes Python já instalados do estágio de build.
 COPY --from=builder /install /usr/local
 
