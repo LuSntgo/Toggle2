@@ -30,9 +30,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run Unit Tests
+      - name: Install dependencies & Run Tests
         run: |
           cd ${{ env.SERVICE_DIR }}
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           python -m unittest discover -s . || true
 
   security-scan:
@@ -95,7 +96,7 @@ jobs:
       - name: Checkout GitOps Repo
         uses: actions/checkout@v4
         with:
-          repository: 'SEU-USUARIO-OU-ORG/togglemaster-gitops'
+          repository: 'LuSntgo/togglemaster-gitops'
           token: ${{ secrets.GITOPS_GITHUB_TOKEN }}
 
       - name: Update deployment.yaml tag
