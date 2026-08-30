@@ -15,10 +15,9 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
-    && apt-get purge -y --auto-remove perl-base \
+    && apt-get purge -y --allow-remove-essential --auto-remove perl-base \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system app && adduser --system --ingroup app app
-
 COPY --from=builder /install /usr/local
 COPY . .
 
