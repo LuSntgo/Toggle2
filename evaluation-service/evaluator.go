@@ -189,8 +189,10 @@ func (a *App) runEvaluationLogic(info *CombinedFlagInfo, userID string) bool {
 }
 
 func getDeterministicBucket(input string) int {
-	// Usamos SHA1 (rápido) e pegamos os primeiros 4 bytes
-	hasher := sha1.New()
+	// Usamos SHA1 (rápido) e pegamos os primeiros 4 bytes.
+	// Uso não-criptográfico: só precisa de distribuição uniforme e
+	// determinismo pro bucketing de rollout percentual, não de segurança.
+	hasher := sha1.New() // #nosec G401 -- hash não-criptográfico, só bucketing determinístico
 	hasher.Write([]byte(input))
 	hash := hasher.Sum(nil)
 	
