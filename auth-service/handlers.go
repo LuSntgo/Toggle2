@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
 	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
