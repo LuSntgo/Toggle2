@@ -224,4 +224,4 @@ def delete_flag(name):
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", "8002"))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)  # nosec B104 - serviço roda em container; precisa escutar em todas as interfaces para ser alcançável na rede docker/k8s

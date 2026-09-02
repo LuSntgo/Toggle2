@@ -60,6 +60,7 @@ func main() {
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
+	// #nosec G102 -- serviço roda em container; precisa escutar em todas as interfaces para ser alcançável na rede docker/k8s
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
