@@ -178,4 +178,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -am "chore: update ${{ env.ECR_REPOSITORY }} image tag to ${{ env.IMAGE_TAG }}"
-          git push
+          for i in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejeitado (tentativa $i/5) - outro job atualizou o repo GitOps ao mesmo tempo; sincronizando e tentando de novo..."
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "Falha ao dar push após 5 tentativas"
+          exit 1
