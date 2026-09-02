@@ -45,9 +45,9 @@ jobs:
       - name: Unit tests
         run: go test -v ./...
       - name: Lint with golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.61
+          version: v2.13.2
           working-directory: ${{ env.SERVICE_DIR }}
       - name: SAST with Gosec
         run: |

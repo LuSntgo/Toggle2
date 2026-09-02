@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- hash não-criptográfico, só bucketing determinístico (ver getDeterministicBucket)
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
