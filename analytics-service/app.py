@@ -1,14 +1,15 @@
+import json
+import logging
 import os
 import sys
 import threading
-import json
-import uuid
 import time
-import logging
+import uuid
+
 import boto3
-from botocore.exceptions import NoCredentialsError, ClientError
-from flask import Flask, jsonify
+from botocore.exceptions import ClientError, NoCredentialsError
 from dotenv import load_dotenv
+from flask import Flask, jsonify
 
 # Configura o logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,6 +22,9 @@ load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 SQS_QUEUE_URL = os.getenv("AWS_SQS_URL")
 DYNAMODB_TABLE_NAME = os.getenv("AWS_DYNAMODB_TABLE")
+# Opcional: aponta o client do DynamoDB para o DynamoDB Local (docker-compose)
+# em vez da AWS real. Sem isso, o serviço tenta sempre falar com a AWS real.
+DYNAMODB_ENDPOINT_URL = os.getenv("AWS_DYNAMODB_ENDPOINT")
 
 if not all([AWS_REGION, SQS_QUEUE_URL, DYNAMODB_TABLE_NAME]):
     log.critical("Erro: AWS_REGION, AWS_SQS_URL, e AWS_DYNAMODB_TABLE devem ser definidos.")
@@ -31,12 +35,12 @@ if not all([AWS_REGION, SQS_QUEUE_URL, DYNAMODB_TABLE_NAME]):
 try:
     session = boto3.Session(region_name=AWS_REGION)
     sqs_client = session.client("sqs")
-    dynamodb_client = session.client("dynamodb")
+    dynamodb_client = session.client("dynamodb", endpoint_url=DYNAMODB_ENDPOINT_URL)
     log.info(f"Clientes Boto3 inicializados na região {AWS_REGION}")
 except NoCredentialsError:
     log.critical("Credenciais da AWS não encontradas. Verifique seu ambiente.")
     sys.exit(1)
-except Exception as e:
+except Exception as e:  # noqa: BLE001 - falha fatal de inicialização, precisa abortar o processo
     log.critical(f"Erro ao inicializar o Boto3: {e}")
     sys.exit(1)
 
@@ -81,7 +85,7 @@ def process_message(message):
     except ClientError as e:
         log.error(f"Erro do Boto3 (DynamoDB ou SQS) ao processar {message['MessageId']}: {e}")
         # Não deleta a mensagem, tenta novamente
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - worker não pode morrer por erro inesperado; mensagem volta pra fila
         log.error(f"Erro inesperado ao processar {message['MessageId']}: {e}")
         # Não deleta a mensagem, tenta novamente
 
@@ -110,7 +114,7 @@ def sqs_worker_loop():
         except ClientError as e:
             log.error(f"Erro do Boto3 no loop principal do SQS: {e}")
             time.sleep(10) # Pausa antes de tentar novamente
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - loop precisa sobreviver a qualquer erro inesperado
             log.error(f"Erro inesperado no loop principal do SQS: {e}")
             time.sleep(10)
 
@@ -135,5 +139,5 @@ def start_worker():
 start_worker()
 
 if __name__ == '__main__':
-    port = int(os.getenv("PORT", 8005))
+    port = int(os.getenv("PORT", "8005"))
     app.run(host='0.0.0.0', port=port, debug=False)

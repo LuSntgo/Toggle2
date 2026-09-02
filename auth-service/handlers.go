@@ -1,8 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -112,7 +111,7 @@ func (a *App) masterKeyAuthMiddleware(next http.Handler) http.Handler {
 		authHeader := r.Header.Get("Authorization")
 		keyString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		if keyString != a.MasterKey {
+		if subtle.ConstantTimeCompare([]byte(keyString), []byte(a.MasterKey)) != 1 {
 			http.Error(w, "Acesso não autorizado", http.StatusForbidden)
 			return
 		}

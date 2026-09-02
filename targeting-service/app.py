@@ -1,14 +1,15 @@
+import json
+import logging
 import os
 import sys
+from functools import wraps
+
 import psycopg2
 import requests
-import json
-from psycopg2.extras import RealDictCursor, Json
-from psycopg2.pool import SimpleConnectionPool
-from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from functools import wraps
-import logging
+from flask import Flask, jsonify, request
+from psycopg2.extras import Json, RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
 
 # Configura o logging
 logging.basicConfig(level=logging.INFO)
@@ -98,7 +99,7 @@ def create_rule():
         if conn: conn.rollback()
         log.warning(f"Tentativa de criar regra duplicada: '{flag_name}'")
         return jsonify({"error": f"Regra para a flag '{flag_name}' já existe"}), 409
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - borda da API: qualquer erro interno vira 500
         if conn: conn.rollback()
         log.error(f"Erro ao criar regra: {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
@@ -120,7 +121,7 @@ def get_rule(flag_name):
         if not rule:
             return jsonify({"error": "Regra não encontrada"}), 404
         return jsonify(rule)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - borda da API: qualquer erro interno vira 500
         log.error(f"Erro ao buscar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
     finally:
@@ -166,7 +167,7 @@ def update_rule(flag_name):
         conn.commit()
         log.info(f"Regra para '{flag_name}' atualizada com sucesso.")
         return jsonify(updated_rule), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - borda da API: qualquer erro interno vira 500
         if conn: conn.rollback()
         log.error(f"Erro ao atualizar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
@@ -191,7 +192,7 @@ def delete_rule(flag_name):
         conn.commit()
         log.info(f"Regra para '{flag_name}' deletada com sucesso.")
         return "", 204 # 204 No Content
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - borda da API: qualquer erro interno vira 500
         if conn: conn.rollback()
         log.error(f"Erro ao deletar regra '{flag_name}': {e}")
         return jsonify({"error": "Erro interno do servidor", "details": str(e)}), 500
@@ -200,5 +201,5 @@ def delete_rule(flag_name):
         if conn: pool.putconn(conn)
 
 if __name__ == '__main__':
-    port = int(os.getenv("PORT", 8003))
+    port = int(os.getenv("PORT", "8003"))
     app.run(host='0.0.0.0', port=port, debug=False)
