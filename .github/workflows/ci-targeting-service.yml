@@ -61,7 +61,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: SCA with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: ./${{ env.SERVICE_DIR }}
@@ -91,7 +91,7 @@ jobs:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: docker build --pull -t "$REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" "${{ env.SERVICE_DIR }}"
       - name: Container scan with Trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           severity: CRITICAL
