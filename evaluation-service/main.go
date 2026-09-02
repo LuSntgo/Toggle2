@@ -106,6 +106,7 @@ func main() {
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
 	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
+	// #nosec G102 -- serviço roda em container; precisa escutar em todas as interfaces para ser alcançável na rede docker/k8s
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
