@@ -1,0 +1,102 @@
+name: Debug - Evaluation Service Redis
+
+# Workflow manual (workflow_dispatch) para diagnosticar, sem precisar de PC/terminal,
+# por que o evaluation-service não sobe no EKS. Roda apenas comandos somente-leitura
+# no cluster (mais um pod efêmero de teste do Redis, que se autodestrói ao terminar).
+# Reaproveita as mesmas credenciais AWS já usadas nos pipelines de CI/CD.
+#
+# Como rodar pelo celular:
+# 1. GitHub app (ou navegador) > repo Toggle2 > aba Actions
+# 2. Selecione "Debug - Evaluation Service Redis" > "Run workflow"
+# 3. Preencha cluster_name (nome do cluster EKS) e rode
+# 4. Abra o job "diagnose" e leia os logs de cada step
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster_name:
+        description: 'Nome do cluster EKS'
+        required: true
+        type: string
+      namespace:
+        description: 'Namespace do Kubernetes'
+        required: false
+        default: 'default'
+        type: string
+      run_live_redis_test:
+        description: 'Criar um pod efêmero e testar PING no Redis usando o REDIS_URL real do cluster?'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Diagnóstico read-only do evaluation-service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install kubectl
+        run: |
+          KUBECTL_VERSION="$(curl -L -s https://dl.k8s.io/release/stable.txt)"
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      - name: Configure kubeconfig (aponta pro cluster EKS)
+        run: aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region us-east-1
+
+      - name: Pods no namespace
+        run: kubectl get pods -n "${{ inputs.namespace }}" -o wide
+
+      - name: Describe pods do evaluation-service
+        run: kubectl describe pod -n "${{ inputs.namespace }}" -l app=evaluation-service
+
+      - name: Logs atuais do evaluation-service
+        run: kubectl logs -n "${{ inputs.namespace }}" -l app=evaluation-service --all-containers --tail=200
+        continue-on-error: true
+
+      - name: Logs do container anterior (útil se estiver em CrashLoopBackOff)
+        run: kubectl logs -n "${{ inputs.namespace }}" -l app=evaluation-service --all-containers --tail=200 --previous
+        continue-on-error: true
+
+      - name: ConfigMap evaluation-service-config (completo)
+        run: kubectl get configmap evaluation-service-config -n "${{ inputs.namespace }}" -o yaml
+        continue-on-error: true
+
+      - name: Chaves do Secret togglemaster-secrets (sem expor valores)
+        run: kubectl get secret togglemaster-secrets -n "${{ inputs.namespace }}" -o jsonpath='{.data}' | jq -r 'keys[]'
+        continue-on-error: true
+
+      - name: Services existentes no namespace (confirma se algum Service já foi criado)
+        run: kubectl get svc -n "${{ inputs.namespace }}" -o wide
+        continue-on-error: true
+
+      - name: containerPort real de cada Deployment (comparar com o manifesto)
+        run: kubectl get deployments -n "${{ inputs.namespace }}" -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].ports}{"\n"}{end}'
+        continue-on-error: true
+
+      - name: Teste de conectividade real com o Redis (pod efêmero, autodestrói ao final)
+        if: ${{ inputs.run_live_redis_test }}
+        run: |
+          set -e
+          REDIS_URL=$(kubectl get secret togglemaster-secrets -n "${{ inputs.namespace }}" -o jsonpath='{.data.REDIS_URL}' 2>/dev/null | base64 -d || true)
+          if [ -z "$REDIS_URL" ]; then
+            REDIS_URL=$(kubectl get configmap evaluation-service-config -n "${{ inputs.namespace }}" -o jsonpath='{.data.REDIS_URL}' 2>/dev/null || true)
+          fi
+          if [ -z "$REDIS_URL" ]; then
+            echo "Não encontrei a chave REDIS_URL nem no Secret nem no ConfigMap. Confira o nome exato da chave usada."
+            exit 1
+          fi
+          echo "::add-mask::$REDIS_URL"
+          echo "REDIS_URL encontrada (valor mascarado no log). Testando PING a partir de dentro do cluster..."
+          kubectl run redis-connectivity-test --rm -i --restart=Never --image=redis:7-alpine -n "${{ inputs.namespace }}" \
+            --command -- redis-cli -u "$REDIS_URL" --no-auth-warning ping
